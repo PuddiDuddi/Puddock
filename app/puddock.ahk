@@ -953,7 +953,7 @@ class Launcher {
             RoundCtl(logo.Hwnd, 10)
         }
         g.AddText("x76 y18 w240 h28", APP).SetFont("s15 bold")
-        g.AddText("x76 y46 w256 h18 c" T.muted, "streamlink + mpv + your browser's chat").SetFont("s9")
+        g.AddText("x76 y46 w500 h18 c" T.muted, "streamlink + mpv + your browser's chat").SetFont("s9")   ; below the account label
 
         this.acctHdr := g.AddText("x340 y26 w236 h20 Right", "")
         this.acctHdr.SetFont("s9")
@@ -978,7 +978,7 @@ class Launcher {
         this.chan := this.Input(24, 162, 432, "", "channel name or twitch.tv link")
         this.Button(464, 162, 112, 34, "Watch  ▶", (*) => this.Watch(), "accent")
 
-        this.Caption(24, 222, "FAVORITES & RECENT")
+        this.Caption(24, 222, "FAVORITES && RECENT")
         this.Button(384, 212, 94, 28, "★  Favorite", (*) => this.ToggleFav())
         this.Button(486, 212, 90, 28, "✕  Remove", (*) => this.RemoveRow())
 
@@ -1152,8 +1152,8 @@ class Launcher {
             st.SetFont("bold")
             inst := this.Button(376, y + 24, 96, 34, "Install", this.InstallTool.Bind(this, key), "accent")
             this.Button(480, y + 24, 96, 34, "Browse…", this.BrowseTool.Bind(this, key))
-            hint := this.Add("Text", Format("x24 y{} w552 h20 c{}", y + 64, T.dim), "")
-            hint.SetFont("s9")
+            hint := this.Add("Text", Format("x24 y{} w552 h32 c{}", y + 64, T.dim), "")
+            hint.SetFont("s9")                        ; text set (and fitted) in UpdateStatus
             this.setup[key] := {status: st, install: inst, hint: hint}
         }
 
@@ -1162,15 +1162,15 @@ class Launcher {
         this.extTxt.SetFont("bold")
         this.Button(376, 354, 96, 34, "Get it", (*) => this.GetExtension(), "accent")
         this.Button(480, 354, 96, 34, "Unpacked…", (*) => this.OpenExtFolder())
-        this.Hint(24, 394, 552, "The chat opens in YOUR browser through the extension, so your 7TV / BTTV / settings apply. "
-                             . "Chrome, Brave, Edge, Opera, Vivaldi · Firefox (experimental).")
+        this.Hint(24, 394, 552, "Get it: chrome://extensions → Developer mode → Load unpacked → the opened folder. "
+                             . "The chat then opens in YOUR browser, with your 7TV / BTTV / settings.", 44)
 
         this.Section(442, "4 · BROWSER CONNECTION")
         this.hostTxt := this.Add("Text", "x24 y473 w340 h22", "")
         this.hostTxt.SetFont("bold")
         this.hostBtn := this.Button(376, 466, 96, 34, "Register", (*) => (RegisterNativeHost(), this.UpdateStatus()), "accent")
         this.Button(480, 466, 96, 34, "Remove", (*) => (UnregisterNativeHost(), this.UpdateStatus()))
-        this.Hint(24, 506, 552, "Lets only the Puddock extension talk to this app (native messaging) — no web page can.", 20)
+        this.Hint(24, 506, 552, "Lets only the Puddock extension talk to this app (native messaging) — no web page can.")
 
         this.Section(546, "SHORTCUTS")
         desk := this.Button(24, 570, 180, 34, "Desktop shortcut", (*) => (MakeShortcut(A_Desktop), FlashText(desk, "Created  ✓")))
@@ -1386,6 +1386,7 @@ class Launcher {
             row.status.Text := path != "" ? "●  Installed" : "○  Not found"
             row.status.SetFont("c" (path != "" ? T.ok : T.warn))
             row.hint.Text := path != "" ? path : "Install with winget (asks first), or point to " key ".exe with Browse…"
+            FitText(row.hint)
             row.install.Text := path != "" ? "Reinstall" : "Install"
             this.Paint(row.install, path != "" ? T.input : T.accent, path != "" ? T.hover : T.accentHi, path != "" ? T.text : "FFFFFF")
         }
@@ -1432,7 +1433,11 @@ class Launcher {
     Section(y, text) => this.Add("Text", "x24 y" y " w552 h18 c" T.section, text).SetFont("s9 bold")
     Caption(x, y, text) => this.Add("Text", Format("x{} y{} w300 h18 c{}", x, y, T.muted), text).SetFont("s9 bold")
     Label(x, y, text, w := 150) => this.Add("Text", Format("x{} y{} w{} h20 c{}", x, y + 8, w, T.muted), text)
-    Hint(x, y, w, text, h := 36) => this.Add("Text", Format("x{} y{} w{} h{} c{}", x, y, w, h, T.dim), text).SetFont("s9")
+    Hint(x, y, w, text, h := 36) {
+        c := this.Add("Text", Format("x{} y{} w{} h{} c{}", x, y, w, h, T.dim), text)
+        FitText(c)
+        return c
+    }
 
     ; Padded, rounded text input: an Edit inside its own small child window.
     Input(x, y, w, text := "", cue := "", opt := "") {
@@ -2691,6 +2696,29 @@ MakeShortcut(dir) {
         FileCreateShortcut(A_ScriptFullPath, lnk, A_ScriptDir, , APP)
     else
         FileCreateShortcut(A_AhkPath, lnk, A_ScriptDir, '"' A_ScriptFullPath '"', APP, FileExist(ICON) ? ICON : "")
+}
+
+; A wrapped Text control has a fixed height in the layout. Measure its text with its own font
+; (real pixels, so DPI and font fallback are included) and step the font down until it all fits,
+; instead of silently cutting off the last line.
+FitText(ctl, size := 9, minSize := 7) {
+    ControlGetPos(, , &w, &h, ctl)
+    loop {
+        ctl.SetFont("s" size)
+        if (size <= minSize || TextHeight(ctl, w) <= h)
+            return
+        size--
+    }
+}
+
+TextHeight(ctl, w) {
+    hdc := DllCall("GetDC", "Ptr", ctl.Hwnd, "Ptr")
+    old := DllCall("SelectObject", "Ptr", hdc, "Ptr", SendMessage(0x31, 0, 0, ctl), "Ptr")   ; WM_GETFONT
+    rc := Buffer(16, 0), NumPut("Int", w, rc, 8)
+    DllCall("DrawText", "Ptr", hdc, "Str", ctl.Text, "Int", -1, "Ptr", rc, "UInt", 0x410)    ; CALCRECT|WORDBREAK
+    DllCall("SelectObject", "Ptr", hdc, "Ptr", old)
+    DllCall("ReleaseDC", "Ptr", ctl.Hwnd, "Ptr", hdc)
+    return NumGet(rc, 12, "Int")
 }
 
 FlashText(ctl, text) {
