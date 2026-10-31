@@ -1,0 +1,16 @@
+# build output
+dist/
+*.zip
+
+# local settings / state (never commit: may contain an encrypted auth token)
+*.ini
+settings/
+*.log
+
+# tooling
+.venv/
+tools/
+
+# editors / assistants
+.vscode/
+.claude/

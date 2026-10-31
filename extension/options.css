@@ -1,0 +1,41 @@
+:root {
+  --bg: #0e0e10; --panel: #18181b; --input: #1f1f23; --hover: #2c2c33; --line: #2f2f35;
+  --text: #f2f2f4; --muted: #cbcbd3; --dim: #a2a2ae; --accent: #9146ff; --accent-hi: #a970ff;
+  --section: #c4a3ff; --ok: #2ee68a; --warn: #ffc24d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0 auto; max-width: 640px; padding: 28px 24px 40px;
+  background: var(--bg); color: var(--text);
+  font: 14px/1.5 Consolas, ui-monospace, "Cascadia Mono", monospace;
+}
+header { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
+header img { border-radius: 10px; }
+h1 { margin: 0; font-size: 22px; }
+h2 { margin: 0 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--section); }
+section { background: var(--panel); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; color: var(--dim); }
+.status { font-weight: bold; }
+.status.ok { color: var(--ok); }
+.status.warn { color: var(--warn); }
+.row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+button {
+  font: inherit; color: var(--text); background: var(--input); border: 0; border-radius: 6px;
+  padding: 8px 14px; cursor: pointer;
+}
+button:hover { background: var(--hover); }
+button.accent { background: var(--accent); color: #fff; font-weight: bold; }
+button.accent:hover { background: var(--accent-hi); }
+.grid { display: grid; grid-template-columns: 1fr auto; gap: 10px 16px; align-items: center; margin-top: 10px; }
+.grid label { color: var(--muted); }
+select, input[type=number] {
+  font: inherit; color: var(--text); background: var(--input); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 8px; min-width: 170px;
+}
+input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); justify-self: end; }
+.checks { list-style: none; padding: 0; margin: 6px 0 0; }
+.checks li::before { content: "○  "; color: var(--warn); }
+.checks li.ok::before { content: "●  "; color: var(--ok); }
+code { color: var(--section); }
+.error { color: var(--warn); }

@@ -1,0 +1,6 @@
+# Template - fill the placeholders (or use `wingetcreate new <installer URL>`), then `winget validate .`
+PackageIdentifier: Puddock.Puddock
+PackageVersion: 0.1.0
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0

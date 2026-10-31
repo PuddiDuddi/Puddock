@@ -1,0 +1,70 @@
+{
+  "manifest_version": 3,
+  "name": "Puddock for Twitch",
+  "short_name": "Puddock",
+  "version": "0.1.0",
+  "description": "Watch Twitch in mpv with your own browser's chat (7TV, BTTV…) side by side. Needs the free Puddock app for Windows.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1stKk8bQlqlPzTOTgjg61ow2yMJ9In2LRjWe4WFOiQttx+4TKSjoMSX2eH7tItNjuySwGcj5/l8P1lMSrkkChDt9vG1lJOYKhAtEVYuK7Xxqw+IMGku4Ul4e/qaJd7SVmReEb9RuZxsXfpCzpVdLiPsi8ye6VhRISkENWyForbImjVB7MmOB739FNelpKsv8KLlucZmuS+4qPhZnxaYVHU1zeOYzeeNHbaxuEmS510xZBQpC1okkxDGEmdTa6WQ+1/8OO2uud6NaIfUwKgrFgjRMLixazWkC1oEF0xX7y7W2MrEdav9mSsb4uOnnFUuKaSy7t0ZumkECbv470B4UBwIDAQAB",
+  "permissions": [
+    "nativeMessaging",
+    "contextMenus",
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "optional_permissions": [
+    "cookies"
+  ],
+  "optional_host_permissions": [
+    "https://www.twitch.tv/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Watch in Puddock (Alt+M)",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png",
+      "48": "icons/48.png"
+    }
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+M"
+      },
+      "description": "Watch the current channel in Puddock"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.twitch.tv/?puddock=connect-*"
+      ],
+      "js": [
+        "connect.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://www.twitch.tv/popout/*/chat*"
+      ],
+      "js": [
+        "chat.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}

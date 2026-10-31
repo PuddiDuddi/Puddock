@@ -1,0 +1,22 @@
+PackageIdentifier: Puddock.Puddock
+PackageVersion: 0.1.0
+Platform:
+  - Windows.Desktop
+MinimumOSVersion: 10.0.17763.0
+InstallerType: inno
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+Dependencies:
+  PackageDependencies:
+    - PackageIdentifier: Streamlink.Streamlink
+    # mpv: add its verified winget ID here too (see docs/PUBLISHING.md, step 0)
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/puddiduddi/Puddock/releases/download/v0.1.0/Puddock-Setup-0.1.0.exe
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000           # TODO from SHA256SUMS.txt
+ManifestType: installer
+ManifestVersion: 1.6.0

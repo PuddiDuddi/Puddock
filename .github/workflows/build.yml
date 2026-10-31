@@ -1,0 +1,163 @@
+name: build
+
+# Every push / PR: build puddock.exe, the installer and both extension packages, lint the
+# Firefox package. A v* tag additionally creates a DRAFT GitHub release with all of it.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege: nothing by default, each job asks for what it needs.
+permissions: {}
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  # Pinned build tools. The job FAILS if a hash does not match.
+  # Hashes are the SHA256 digests GitHub shows for the official release assets.
+  AHK_URL: https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.31/AutoHotkey_2.0.31.zip
+  AHK_SHA256: ca1a595aca4528755d8d4cd7fed23d497a37bd9a0b6892072612d68dee1bd00a
+  AHK2EXE_URL: https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a2/Ahk2Exe1.1.37.02a2.zip
+  AHK2EXE_SHA256: c29b8c3a5124850d79fc9e66e2ca79677c377d7f31631ad3022ba159c5d9e3be
+  # Inno Setup 6 (installer/puddock.iss is written for 6.x; 7.x is a separate upgrade)
+  INNO_URL: https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/innosetup-6.7.4.exe
+  INNO_SHA256: a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c
+  WEB_EXT_VERSION: 10.8.0
+
+jobs:
+  build:
+    runs-on: windows-2025            # pinned image, not "latest"
+    permissions:
+      contents: read
+      id-token: write                # build provenance attestation (tags only)
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Tag matches build/version.txt
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          $version = (Get-Content build/version.txt -Raw).Trim()
+          if ($env:TAG -ne "v$version") { throw "Tag $env:TAG does not match build/version.txt ($version)" }
+
+      - name: Download and verify build tools
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          function Get-Verified($url, $sha, $name, $ext) {
+            if ([string]::IsNullOrWhiteSpace($sha)) { throw "${name}: SHA256 is not set - refusing to build with an unverified tool" }
+            $file = Join-Path $env:RUNNER_TEMP "$name$ext"
+            Invoke-WebRequest -Uri $url -OutFile $file -UseBasicParsing
+            $actual = (Get-FileHash $file -Algorithm SHA256).Hash
+            if ($actual -ne $sha.ToUpper()) { throw "${name}: SHA256 mismatch (expected $sha, got $actual)" }
+            return $file
+          }
+          function Expand-Verified($url, $sha, $name) {
+            $dir = Join-Path $env:RUNNER_TEMP $name
+            Expand-Archive (Get-Verified $url $sha $name '.zip') -DestinationPath $dir -Force
+            return $dir
+          }
+          $ahk  = Expand-Verified $env:AHK_URL     $env:AHK_SHA256     'ahk'
+          $comp = Expand-Verified $env:AHK2EXE_URL $env:AHK2EXE_SHA256 'ahk2exe'
+          $base = Get-ChildItem $ahk  -Recurse -Filter AutoHotkey64.exe | Select-Object -First 1
+          $a2e  = Get-ChildItem $comp -Recurse -Filter Ahk2Exe.exe      | Select-Object -First 1
+          if (-not $base -or -not $a2e) { throw 'AutoHotkey64.exe / Ahk2Exe.exe not found in the archives' }
+          "AHK_BASE=$($base.FullName)" | Out-File $env:GITHUB_ENV -Append
+          "AHK2EXE=$($a2e.FullName)"   | Out-File $env:GITHUB_ENV -Append
+          # Inno Setup: our own pinned, verified copy (not whatever the image or a package feed has)
+          $inno = Get-Verified $env:INNO_URL $env:INNO_SHA256 'innosetup' '.exe'
+          $innoDir = Join-Path $env:RUNNER_TEMP 'inno'
+          Start-Process $inno -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER /DIR=`"$innoDir`"" -Wait
+          if (-not (Test-Path "$innoDir\ISCC.exe")) { throw 'Inno Setup install failed' }
+          "ISCC=$innoDir\ISCC.exe" | Out-File $env:GITHUB_ENV -Append
+
+      # Code signing happens INSIDE build.ps1 (puddock.exe before it is packed, then the installer
+      # and uninstaller via Inno Setup). Enable with the repository variable SIGNING_ENABLED=true
+      # once build/sign.ps1 is wired to the chosen service (docs/PUBLISHING.md, section 5).
+      - name: Build
+        shell: pwsh
+        env:
+          SIGNING_ENABLED: ${{ vars.SIGNING_ENABLED }}
+        run: |
+          $sign = if ($env:SIGNING_ENABLED -eq 'true') { @{ SignScript = './build/sign.ps1' } } else { @{} }
+          ./build/build.ps1 -Ahk2Exe $env:AHK2EXE -AhkBase $env:AHK_BASE -Iscc $env:ISCC @sign
+          foreach ($f in 'puddock.exe', "Puddock-Setup-*.exe", 'puddock-chromium-*.zip', 'puddock-firefox-*.zip', 'SHA256SUMS.txt') {
+            if (-not (Get-ChildItem "dist/$f" -ErrorAction SilentlyContinue)) { throw "Missing build output: dist/$f" }
+          }
+
+      # Signed statement (Sigstore, via GitHub) of which commit and workflow produced these files.
+      # Check with:  gh attestation verify <file> --repo puddiduddi/Puddock
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          subject-path: |
+            dist/*.exe
+            dist/*.zip
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+  lint-extension:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: web-ext lint (Firefox package)
+        run: |
+          mkdir firefox
+          unzip -q dist/puddock-firefox-*.zip -d firefox
+          npx --yes "web-ext@${WEB_EXT_VERSION}" lint --source-dir firefox
+
+  release:
+    needs: [build, lint-extension]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    # A protected environment (Settings → Environments) with required reviewers: nobody can
+    # publish just by pushing a tag. Combine with a tag protection rule for v*.
+    environment: release
+    permissions:
+      contents: write          # only this job can create the release
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+
+      - name: Verify checksums
+        run: cd dist && sha256sum -c SHA256SUMS.txt
+
+      - name: Create GitHub release (draft)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Puddock ${TAG#v}" \
+            --notes "Verify downloads with SHA256SUMS.txt or \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`. See README for installation." \
+            --draft

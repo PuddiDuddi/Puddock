@@ -1,0 +1,23 @@
+PackageIdentifier: Puddock.Puddock
+PackageVersion: 0.1.0
+PackageLocale: en-US
+Publisher: Puddock contributors
+PublisherUrl: https://github.com/puddiduddi/Puddock
+PublisherSupportUrl: https://github.com/puddiduddi/Puddock/issues
+PrivacyUrl: https://github.com/puddiduddi/Puddock/blob/main/PRIVACY.md
+PackageName: Puddock
+PackageUrl: https://github.com/puddiduddi/Puddock
+License: MIT (exe embeds the GPLv2 AutoHotkey runtime)
+LicenseUrl: https://github.com/puddiduddi/Puddock/blob/main/LICENSE
+ShortDescription: Watch Twitch streams in mpv with your browser's popout chat docked beside the video.
+Description: |-
+  Puddock plays Twitch streams through streamlink and mpv and docks Twitch's popout chat from your
+  own browser (with your chat extensions) next to the video in one window. Not affiliated with Twitch.
+Tags:
+  - twitch
+  - mpv
+  - streamlink
+  - chat
+  - streaming
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

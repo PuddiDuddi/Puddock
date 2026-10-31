@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Puddock — options</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <header>
+    <img src="icons/48.png" alt="" width="40" height="40">
+    <div>
+      <h1>Puddock</h1>
+      <p class="muted">Twitch in mpv, with your browser's chat side by side</p>
+    </div>
+  </header>
+
+  <section id="app">
+    <h2>App</h2>
+    <p id="app-status" class="status">Checking…</p>
+    <div id="app-missing" hidden>
+      <p class="muted">This extension works together with the free Puddock app for Windows.
+        Install it, then press Retry. The installer also registers the private connection
+        between the app and this browser.</p>
+      <div class="row"><button id="retry" class="accent">Retry</button></div>
+    </div>
+    <div id="app-ok" hidden>
+      <ul class="checks">
+        <li id="dep-streamlink">streamlink</li>
+        <li id="dep-mpv">mpv</li>
+      </ul>
+      <div class="row"><button id="open-setup">Open Puddock setup</button>
+        <button id="open-launcher">Open Puddock</button></div>
+    </div>
+  </section>
+
+  <section id="browser">
+    <h2>In the browser</h2>
+    <div class="grid">
+      <label for="Button">▶ Puddock button on Twitch channel pages</label><input type="checkbox" id="Button">
+    </div>
+    <p class="muted small">Optional: it needs access to all of twitch.tv, which the browser asks you for when
+      you turn it on. Without it, use the toolbar icon, Alt+M or right-click → “Watch in Puddock”.</p>
+  </section>
+
+  <section id="settings" hidden>
+    <h2>Settings <span id="saved" class="muted" hidden>saved ✓</span></h2>
+    <p class="muted">Shared with the app — changes apply to the next stream you open.</p>
+    <div class="grid">
+      <label for="Quality">Quality</label>
+      <select id="Quality">
+        <option value="best">Best</option><option value="1080p60">1080p60</option>
+        <option value="720p60">720p60</option><option value="480p">480p</option>
+        <option value="360p">360p</option><option value="audio_only">Audio only</option>
+      </select>
+      <label for="LowLatency">Low latency</label><input type="checkbox" id="LowLatency">
+      <label for="Rewind">Rewind buffer</label>
+      <select id="Rewind">
+        <option value="0">Off</option><option value="5">5 min</option>
+        <option value="15">15 min</option><option value="30">30 min</option>
+      </select>
+      <label for="VideoMode">Video mode</label>
+      <select id="VideoMode">
+        <option value="Embedded">Embedded</option><option value="Window">Separate window</option>
+      </select>
+      <label for="TopBar">Toolbar at the top edge</label><input type="checkbox" id="TopBar">
+      <label for="ChatSide">Chat side</label>
+      <select id="ChatSide"><option value="Left">Left</option><option value="Right">Right</option></select>
+      <label for="ChatWidth">Chat width (px)</label><input type="number" id="ChatWidth" min="200" max="1200" step="10">
+      <label for="ChatDark">Dark chat</label><input type="checkbox" id="ChatDark">
+      <label for="ChatInFullscreen">Chat in fullscreen</label><input type="checkbox" id="ChatInFullscreen">
+      <label for="RememberPos">Remember window position</label><input type="checkbox" id="RememberPos">
+      <label for="StartFullscreen">Start fullscreen</label><input type="checkbox" id="StartFullscreen">
+      <label for="AlwaysOnTop">Always on top</label><input type="checkbox" id="AlwaysOnTop">
+    </div>
+    <p class="muted small">Program paths and raw streamlink / mpv arguments can only be changed in the app itself.</p>
+  </section>
+
+  <section id="account" hidden>
+    <h2>Twitch account</h2>
+    <p id="account-status" class="status"></p>
+    <p class="muted">Optional. With your login, streamlink plays ad-free if you have Turbo or a sub,
+      and can open sub-only streams. Connecting reads only twitch.tv's <code>auth-token</code> cookie,
+      hands it to the Puddock app on this computer (stored encrypted for your Windows account), and
+      gives the cookie permission back right away. Nothing is sent anywhere else.</p>
+    <div class="row"><button id="connect" class="accent">Connect Twitch account</button>
+      <button id="disconnect">Disconnect</button></div>
+  </section>
+
+  <p id="error" class="error" hidden></p>
+  <script src="options.js"></script>
+</body>
+</html>
