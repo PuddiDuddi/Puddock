@@ -70,4 +70,4 @@ And points these per-user registry keys (default value = manifest path) at them:
 
 `--uninstall` removes the keys, our manifest files and the saved token (settings are kept).
 
-Allowed extension IDs are constants at the top of `app/puddock.ahk`: store IDs (added at publish time), plus the dev/unpacked ID (fixed by the `key` in `extension/manifest.json`) only when running from source or with `[Developer] AllowDevExtension=1` in settings.ini — re-register afterwards.
+Allowed extension IDs are constants at the top of `app/puddock.ahk` (`CHROMIUM_IDS`, `GECKO_ID`). Puddock is distributed on GitHub only, so the trusted Chromium ID is the one fixed by the public `key` in `extension/manifest.json`; add store IDs there if the extension is ever listed.

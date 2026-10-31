@@ -26,15 +26,16 @@ Puddock plays the stream through [streamlink](https://streamlink.github.io/) + [
 2. Run it (per-user install, no administrator rights needed).
 3. The **Setup** screen opens: it checks for streamlink and mpv and, with your consent, installs missing ones through winget.
 
-### winget
-```powershell
-winget install Puddock.Puddock   # TODO: available after the first winget submission
-```
-
 ### Browser extension
-- Chrome / Brave / Opera / Vivaldi: Chrome Web Store — *link TBD*
-- Firefox: addons.mozilla.org — *link TBD* (chat embedding in Firefox is experimental)
-- Developers: load `extension/` (or `dist\extension`) unpacked via `chrome://extensions` → Developer mode → *Load unpacked*.
+Puddock is distributed on GitHub only (not in the browser stores), so you load the extension yourself:
+
+1. Open `chrome://extensions` (Brave, Edge, Opera and Vivaldi use their own address, e.g. `edge://extensions`; the same page).
+2. Turn on **Developer mode**.
+3. Click **Load unpacked** and choose `%LOCALAPPDATA%\Programs\Puddock\extension` (the installer puts it there; Setup → *Get it* opens the folder). Without the installer: unzip `puddock-chromium-<version>.zip` from Releases into a folder you keep.
+
+Keep the folder: the browser loads the extension from it every time. After updating Puddock, click the reload icon on the extension card.
+
+**Firefox** (experimental): release Firefox only accepts signed add-ons, so `puddock-firefox-<version>.zip` can only be loaded temporarily (`about:debugging` → *This Firefox* → *Load Temporary Add-on*, until the browser restarts), or permanently in Firefox Developer Edition / Nightly with `xpinstall.signatures.required` set to `false`.
 
 The extension talks to the app through the browser's **Native Messaging** — run `puddock.exe --install` (the installer does this) so the browser can find the app.
 
@@ -43,7 +44,7 @@ The extension talks to the app through the browser's **Native Messaging** — ru
 `puddock.exe --setup` (also opened by the installer) shows:
 - **streamlink** / **mpv** — found (path + version) or an *Install with winget* button. You can also point to existing executables.
 - **Browser connection** — registers Puddock as a native messaging host for Chrome, Chromium, Edge, Brave, Vivaldi and Firefox (per user, `HKCU`).
-- **Extension** — links to the store pages; shows whether the extension has contacted the app.
+- **Extension** — *Get it* opens the extension folder and copies `chrome://extensions` for *Load unpacked*; shows whether the extension has contacted the app.
 - **Account** (optional) — click *Connect Twitch account* in the extension's options.
 
 ## Usage

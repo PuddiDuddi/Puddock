@@ -117,18 +117,14 @@ Invoke-Sign $exe                                  # before it gets packed into t
 Write-Host "  app        -> $exe$(if ($SignScript) { ' (signed)' })"
 
 # ---------- extension ----------
-# Unpacked copy WITH the dev "key" (stable dev ID; shipped by the installer for developer mode).
-$null = Copy-Extension (Join-Path $dist 'extension')
-Write-Host "  extension  -> dist\extension (unpacked, dev key)"
+# Puddock is distributed through GitHub only: users load the extension unpacked ("Load unpacked"),
+# and the "key" in manifest.json gives it the fixed ID the app trusts. Keep the key in every
+# Chromium copy. (A store upload would need it removed - the store assigns its own ID.)
+$null = Copy-Extension (Join-Path $dist 'extension')            # shipped by the installer
+Write-Host "  extension  -> dist\extension (unpacked)"
 
-# Chromium store package: no "key" (the store assigns the ID).
-$stage = Join-Path $env:TEMP "puddock-build-chromium"
-$m = Copy-Extension $stage
-$m.PSObject.Properties.Remove('key')
-Write-Json $m (Join-Path $stage 'manifest.json')
-$chromiumZip = Join-Path $dist "puddock-chromium-$version.zip"
-New-Zip $stage $chromiumZip
-Remove-Item $stage -Recurse -Force
+$chromiumZip = Join-Path $dist "puddock-chromium-$version.zip"   # same files, for users without the installer
+New-Zip (Join-Path $dist 'extension') $chromiumZip
 Write-Host "  chromium   -> $chromiumZip"
 
 # Firefox package: background scripts instead of a service worker, gecko id.

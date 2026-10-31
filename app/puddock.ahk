@@ -43,13 +43,12 @@ WEB_CLIENT_ID := "kimne78kx3ncx6brgo4mv6wki5h1ko"     ; twitch.tv's own client i
 CRED_TARGET   := "Puddock/twitch-auth-token"          ; Windows Credential Manager entry for the token
 
 ; ----- browser connection (native messaging) -----
-; Only these extensions may talk to the app: add the Chrome Web Store ID here after the first
-; upload. The dev build's ID (fixed by the public "key" in extension/manifest.json, so anyone can
-; load an unpacked copy with it) is trusted only from source, or with [Developer]
-; AllowDevExtension=1 in settings.ini (then Setup → Re-register). See AllowedChromiumIds().
+; Only these extensions may talk to the app. Puddock is distributed through GitHub only: users load
+; the extension unpacked, and the public "key" in extension/manifest.json fixes its ID. That key is
+; public, so any unpacked extension can claim this ID — which is why the host accepts only a fixed,
+; validated command set (no paths, no token read-back). Add store IDs here if it is ever listed.
 NATIVE_HOST   := "com.puddock.native"
-CHROMIUM_IDS  := []
-DEV_EXT_ID    := "lblgbbefjfbhcecckfkacpoeikbfggif"
+CHROMIUM_IDS  := ["lblgbbefjfbhcecckfkacpoeikbfggif"]
 GECKO_ID      := "puddock@puddock.app"
 STORE_URL     := ""                                   ; Chrome Web Store page, once published
 HOST_REG_KEYS := ["Google\Chrome", "Chromium", "Microsoft\Edge", "BraveSoftware\Brave-Browser", "Vivaldi"]
@@ -1214,7 +1213,7 @@ class Launcher {
             return Run(STORE_URL)
         this.OpenExtFolder()
         A_Clipboard := "chrome://extensions"
-        this.Flash("Not in the stores yet: chrome://extensions → Developer mode → Load unpacked → this folder (copied)", T.section)
+        this.Flash("Open chrome://extensions (copied) → Developer mode → Load unpacked → pick this folder", T.section)
     }
 
     ; Opens the extension's options in the user's browser; they press "Connect" there
@@ -2390,12 +2389,7 @@ PlayerWindow(ch) {
 
 HostDir() => DATA_DIR "\native-host"
 
-AllowedChromiumIds() {
-    ids := CHROMIUM_IDS.Clone()
-    if !A_IsCompiled || IniRead(INI_FILE, "Developer", "AllowDevExtension", 0) = 1
-        ids.Push(DEV_EXT_ID)
-    return ids
-}
+AllowedChromiumIds() => CHROMIUM_IDS
 
 ; What the browsers start. A compiled build is its own host; a plain script needs a tiny
 ; .cmd in front, since browsers only start programs.

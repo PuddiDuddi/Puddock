@@ -2,6 +2,8 @@
 
 Written for a publisher who is not the author. Do the steps in order; tick them off in the release PR.
 
+> **Current distribution: GitHub Releases only.** Users load the extension unpacked; the app trusts the ID fixed by the `key` in `extension/manifest.json`. For a release you need sections 0, 2, 5 (optional) and 7. Sections 1, 3, 4 and 6 (stores, winget) are kept for later.
+
 ## 0. Before anything
 - [ ] **Twitch brand check.** Read the current Twitch brand / trademark guidelines. The product name is *Puddock*; "for Twitch" may appear only descriptively (store title "Puddock for Twitch"). Do not use Twitch logos or the Glitch in icons, screenshots or promo images. If the guidelines forbid "for Twitch" in titles, use "Puddock" and mention Twitch only in the description.
 - [ ] **Verify the mpv winget ID.** Run `winget search mpv` and `winget show --id <id> -e`; make sure the ID constant in `app/puddock.ahk` points to the plain mpv build (e.g. shinchiro's), not mpv.net. Update the constant if needed.
@@ -20,8 +22,8 @@ Written for a publisher who is not the author. Do the steps in order; tick them 
 - Artifacts: `puddock.exe`, `Puddock-Setup-X.Y.Z.exe`, `puddock-chromium-X.Y.Z.zip`, `puddock-firefox-X.Y.Z.zip`, `SHA256SUMS.txt`.
 
 ## 3. Chrome Web Store
-1. Upload `puddock-chromium-X.Y.Z.zip` (it has no `key` field; the store assigns the ID).
-2. **Copy the assigned extension ID** into `CHROMIUM_IDS` at the top of `app/puddock.ahk`, bump the patch version, rebuild and re-release the app. Without this the store extension cannot talk to a compiled app (release builds don't trust the dev ID; for testing a compiled build with the unpacked extension, set `[Developer] AllowDevExtension=1` in `%APPDATA%\Puddock\settings.ini` and re-register in Setup).
+1. Make a store copy of `puddock-chromium-X.Y.Z.zip` **without** the `key` field in `manifest.json` (the store rejects it and assigns its own ID), and upload that.
+2. **Copy the assigned extension ID** into `CHROMIUM_IDS` at the top of `app/puddock.ahk` (next to the unpacked ID), bump the patch version, rebuild and re-release the app. Without this the store extension cannot talk to the app.
 3. Listing:
    - **Title:** Puddock for Twitch
    - **Short description (≤132 chars):** Watch Twitch in mpv with your own browser's popout chat docked beside it — one click, one window. Requires the Puddock app.
@@ -70,4 +72,4 @@ Written for a publisher who is not the author. Do the steps in order; tick them 
 ## 7. Release
 - [ ] GitHub release notes, attach artifacts + `SHA256SUMS.txt`.
 - [ ] Update README store / winget links.
-- [ ] Smoke test on a clean Windows user: installer → Setup (winget installs) → extension from store → watch a live channel → connect account → uninstall leaves no `HKCU\…\NativeMessagingHosts\com.puddock.native` keys.
+- [ ] Smoke test on a clean Windows user: installer → Setup (winget installs) → extension loaded unpacked from the install folder → watch a live channel → connect account → uninstall leaves no `HKCU\…\NativeMessagingHosts\com.puddock.native` keys.
