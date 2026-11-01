@@ -7,7 +7,7 @@
 ;@Ahk2Exe-SetProductName Puddock
 ;@Ahk2Exe-SetDescription Puddock - Twitch streams in mpv with your browser's chat
 ;@Ahk2Exe-SetCopyright Copyright (c) 2026 Puddock contributors (MIT)
-;@Ahk2Exe-SetVersion 0.1.0
+;@Ahk2Exe-SetVersion 0.0.0
 ; ---------------------------------------------------------------------------
 ;  Puddock — streamlink video (mpv) and your own browser's Twitch popout chat
 ;  in ONE seamless window.
@@ -36,7 +36,7 @@
 ; ---------------------------------------------------------------------------
 
 APP       := "Puddock"
-VERSION   := "0.1.0"
+VERSION   := "0.0.0"                                   ; stamped by build/build.ps1 from the git tag
 DATA_DIR  := EnvGet("APPDATA") "\Puddock"
 INI_FILE  := DATA_DIR "\settings.ini"
 WEB_CLIENT_ID := "kimne78kx3ncx6brgo4mv6wki5h1ko"     ; twitch.tv's own client id (what streamlink needs)
@@ -158,6 +158,8 @@ F6::P.ReloadStream()
 F3::P.bar.Toggle()
 #HotIf P && P.MouseOverVideo()
 ~LButton::P.FocusVideo()          ; embedded mode: click on the video -> keyboard goes to mpv
+#HotIf P && P.MouseOverChat()
+~LButton::P.FocusChat()           ; click on the chat -> keyboard goes to the chat (not mpv)
 #HotIf P && P.isFull && P.IsActive()
 Esc::P.ToggleFullscreen()
 #HotIf L && WinActive("ahk_id " L.g.Hwnd)
@@ -304,7 +306,7 @@ class Player {
                              && this.proc.Owns(WindowPid(h)) {
                 this.videoUp := true, this.mpvHwnd := h
                 this.lbl.Visible := false
-                if WinActive(this.g.Hwnd)
+                if WinActive(this.g.Hwnd) && !this.ChatHasFocus()   ; don't cut off someone typing in chat
                     this.FocusVideo()
             } else if !this.embedded && (h := WinExist("^" this.mpvTitle "$ ahk_class ^mpv$"))
                              && this.proc.Owns(WindowPid(h))     ; only the mpv that our streamlink started
@@ -609,9 +611,34 @@ class Player {
         return win = this.g.Hwnd && (ctl = this.mpvHwnd || ctl = this.vg.Hwnd)
     }
 
+    ; The chat is a child window of another process too: a click on it doesn't take the keyboard
+    ; away from mpv (both share our window's focus), so hand it over the same way.
+    FocusChat() {
+        if this.chatHwnd && DllCall("IsWindow", "Ptr", this.chatHwnd) && !this.ChatHasFocus()
+            try ControlFocus(this.chatHwnd)
+    }
+
+    MouseOverChat() {
+        if !this.chatHwnd || !this.chatVisible || !DllCall("IsWindowVisible", "Ptr", this.host.Hwnd)
+            return false
+        CoordMode("Mouse", "Screen")
+        MouseGetPos(&mx, &my, &win)
+        r := WinRect(this.host.Hwnd)                  ; the visible part of the chat
+        return win = this.g.Hwnd && mx >= r[1] && mx < r[3] && my >= r[2] && my < r[4]
+    }
+
+    ChatHasFocus() {
+        f := FocusOfForeground()
+        return this.chatHwnd && f && (f = this.chatHwnd || DllCall("IsChild", "Ptr", this.chatHwnd, "Ptr", f))
+    }
+
     OnActivate(wParam, lParam, msg, hwnd) {
-        if (hwnd = this.g.Hwnd && (wParam & 0xFFFF) && this.MouseOverVideo())
+        if (hwnd != this.g.Hwnd || !(wParam & 0xFFFF))
+            return
+        if this.MouseOverVideo()
             SetTimer(ObjBindMethod(this, "FocusVideo"), -30)
+        else if this.MouseOverChat()
+            SetTimer(ObjBindMethod(this, "FocusChat"), -30)
     }
 
     SetVideoMode(mode) {

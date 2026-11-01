@@ -1,6 +1,7 @@
 # build output
 dist/
 *.zip
+app/puddock.build.ahk
 
 # local settings / state (never commit: may contain an encrypted auth token)
 *.ini

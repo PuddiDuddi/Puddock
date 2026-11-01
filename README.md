@@ -81,7 +81,7 @@ Requirements: Windows, PowerShell 7+, [AutoHotkey v2](https://www.autohotkey.com
 
 Output in `dist\`: `puddock.exe`, the unpacked extension, Chromium and Firefox extension zips, the installer (if Inno Setup is installed) and `SHA256SUMS.txt`. You can also run `app\puddock.ahk` directly with AutoHotkey v2 during development.
 
-The version lives in `build/version.txt` and must match `extension/manifest.json`. CI (`.github/workflows/build.yml`) builds every push and pull request; a `v*` tag also creates a draft release.
+The version comes from the git tag: push `vX.Y.Z` and the build stamps `X.Y.Z` into `puddock.exe`, both extension manifests and the installer (the `0.0.0` in the sources is a placeholder; local builds use the latest tag, or `-Version X.Y.Z`). CI (`.github/workflows/build.yml`) builds every push and pull request; a `v*` tag also creates a draft release.
 
 ## Documentation
 

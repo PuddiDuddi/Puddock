@@ -40,15 +40,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Tag matches build/version.txt
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: pwsh
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          $version = (Get-Content build/version.txt -Raw).Trim()
-          if ($env:TAG -ne "v$version") { throw "Tag $env:TAG does not match build/version.txt ($version)" }
-
       - name: Download and verify build tools
         shell: pwsh
         run: |
@@ -88,9 +79,11 @@ jobs:
         shell: pwsh
         env:
           SIGNING_ENABLED: ${{ vars.SIGNING_ENABLED }}
+          # the tag IS the version (v0.1.1 -> 0.1.1, stamped into every file); other builds: 0.0.0
+          VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '0.0.0' }}
         run: |
           $sign = if ($env:SIGNING_ENABLED -eq 'true') { @{ SignScript = './build/sign.ps1' } } else { @{} }
-          ./build/build.ps1 -Ahk2Exe $env:AHK2EXE -AhkBase $env:AHK_BASE -Iscc $env:ISCC @sign
+          ./build/build.ps1 -Ahk2Exe $env:AHK2EXE -AhkBase $env:AHK_BASE -Iscc $env:ISCC -Version $env:VERSION @sign
           foreach ($f in 'puddock.exe', "Puddock-Setup-*.exe", 'puddock-chromium-*.zip', 'puddock-firefox-*.zip', 'SHA256SUMS.txt') {
             if (-not (Get-ChildItem "dist/$f" -ErrorAction SilentlyContinue)) { throw "Missing build output: dist/$f" }
           }

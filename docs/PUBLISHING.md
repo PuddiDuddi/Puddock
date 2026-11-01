@@ -9,7 +9,7 @@ Written for a publisher who is not the author. Do the steps in order; tick them 
 - [ ] **Verify the mpv winget ID.** Run `winget search mpv` and `winget show --id <id> -e`; make sure the ID constant in `app/puddock.ahk` points to the plain mpv build (e.g. shinchiro's), not mpv.net. Update the constant if needed.
 - [ ] Verify `Streamlink.Streamlink` with `winget show --id Streamlink.Streamlink -e`.
 - [x] Repository: https://github.com/puddiduddi/Puddock (README, privacy policy, installer, winget metadata).
-- [ ] Set the version in `build/version.txt` **and** `extension/manifest.json` (they must match).
+- [ ] Pick the version and push it as a tag: `git tag -a vX.Y.Z -m "Puddock X.Y.Z" && git push origin vX.Y.Z`. Nothing to edit by hand: the build stamps the version from the tag.
 
 ## 1. Accounts
 - Chrome Web Store developer account (one-time 5 USD fee, 2-step verification required).
@@ -23,7 +23,7 @@ Written for a publisher who is not the author. Do the steps in order; tick them 
 
 ## 3. Chrome Web Store
 1. Make a store copy of `puddock-chromium-X.Y.Z.zip` **without** the `key` field in `manifest.json` (the store rejects it and assigns its own ID), and upload that.
-2. **Copy the assigned extension ID** into `CHROMIUM_IDS` at the top of `app/puddock.ahk` (next to the unpacked ID), bump the patch version, rebuild and re-release the app. Without this the store extension cannot talk to the app.
+2. **Copy the assigned extension ID** into `CHROMIUM_IDS` at the top of `app/puddock.ahk` (next to the unpacked ID), and release the app with the next patch tag. Without this the store extension cannot talk to the app.
 3. Listing:
    - **Title:** Puddock for Twitch
    - **Short description (≤132 chars):** Watch Twitch in mpv with your own browser's popout chat docked beside it — one click, one window. Requires the Puddock app.

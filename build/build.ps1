@@ -8,6 +8,10 @@
   .\build\build.ps1 -Ahk2Exe "C:\Program Files\AutoHotkey\Compiler\Ahk2Exe.exe" `
                     -AhkBase "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"
 
+.PARAMETER Version
+  X.Y.Z stamped into puddock.exe, both extension manifests and the installer. CI passes the
+  pushed tag (v0.1.1 -> 0.1.1). Empty: the latest v* tag in this checkout, else 0.0.0.
+
 .PARAMETER SignScript
   Optional PowerShell script taking -Path <file> that Authenticode-signs that file in place.
   puddock.exe is signed BEFORE it is packed into the installer; the installer and its
@@ -19,6 +23,7 @@ param(
     [Parameter(Mandatory)] [string] $AhkBase,     # AutoHotkey64.exe (v2) used as the exe base
     [string] $Iscc = "",                          # ISCC.exe; auto-detected if empty
     [string] $SignScript = "",                    # see .PARAMETER SignScript
+    [string] $Version = "",                       # see .PARAMETER Version
     [switch] $SkipInstaller
 )
 
@@ -81,6 +86,11 @@ function Copy-Extension($dest) {
         New-Item (Split-Path $target -Parent) -ItemType Directory -Force | Out-Null
         Copy-Item (Join-Path $extSrc $f) $target
     }
+    # the source manifest carries a placeholder: stamp the release version into the copy
+    $mf = Join-Path $dest 'manifest.json'
+    $text = [IO.File]::ReadAllText($mf, $utf8)
+    if ($text -notmatch '"version"\s*:\s*"[^"]*"') { throw "No version field in $mf" }
+    [IO.File]::WriteAllText($mf, [regex]::Replace($text, '("version"\s*:\s*)"[^"]*"', "`${1}`"$version`"", 1), $utf8)
     return (Get-Content (Join-Path $dest 'manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json)
 }
 
@@ -92,13 +102,13 @@ function Invoke-Sign($path) {
     if ($sig.Status -ne 'Valid') { throw "Signature of $path is $($sig.Status) after signing" }
 }
 
-# ---------- version: single source of truth ----------
-$version = (Get-Content (Join-Path $PSScriptRoot 'version.txt') -Raw).Trim()
-if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "build/version.txt must contain X.Y.Z, got '$version'" }
-$manifest = Get-Content (Join-Path $extSrc 'manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($manifest.version -ne $version) {
-    throw "Version mismatch: build/version.txt=$version, extension/manifest.json=$($manifest.version)"
+# ---------- version: the git tag is the single source of truth ----------
+if (-not $Version) {
+    $tag = try { git -C $root describe --tags --abbrev=0 --match 'v[0-9]*' 2>$null } catch { $null }
+    $Version = if ($tag) { $tag } else { '0.0.0' }
 }
+$version = $Version.Trim() -replace '^v', ''
+if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Version must be X.Y.Z (or vX.Y.Z), got '$Version'" }
 Write-Host "Building Puddock $version"
 
 foreach ($p in @($Ahk2Exe, $AhkBase)) { if (-not (Test-Path $p -PathType Leaf)) { throw "Not found: $p" } }
@@ -109,9 +119,22 @@ New-Item $dist -ItemType Directory | Out-Null
 
 # ---------- app ----------
 $exe = Join-Path $dist 'puddock.exe'
-# Start-Process does not quote array elements on Windows PowerShell: build the quoted line ourselves.
-$ahkArgs = '/in "{0}" /out "{1}" /base "{2}" /silent verbose' -f (Join-Path $root 'app\puddock.ahk'), $exe, $AhkBase
-$proc = Start-Process -FilePath $Ahk2Exe -ArgumentList $ahkArgs -Wait -PassThru -NoNewWindow
+# Compile a copy with the version stamped in (VERSION and the exe's file version). It sits next to
+# the original so its relative #Include / icon paths still resolve; removed right after.
+$src = [IO.File]::ReadAllText((Join-Path $root 'app\puddock.ahk'), $utf8)
+$stampedSrc = [regex]::Replace($src, '(?m)^(;@Ahk2Exe-SetVersion )\S+', "`${1}$version")
+$stampedSrc = [regex]::Replace($stampedSrc, '(?m)^(VERSION\s*:=\s*)"[^"]*"', "`${1}`"$version`"")
+if ($stampedSrc -notmatch "(?m)^;@Ahk2Exe-SetVersion $([regex]::Escape($version))" -or
+    $stampedSrc -notmatch "(?m)^VERSION\s*:=\s*`"$([regex]::Escape($version))`"") {
+    throw "Couldn't stamp the version into app\puddock.ahk (VERSION / ;@Ahk2Exe-SetVersion lines)"
+}
+$ahkIn = Join-Path $root 'app\puddock.build.ahk'
+[IO.File]::WriteAllText($ahkIn, $stampedSrc, $utf8)
+try {
+    # Start-Process does not quote array elements on Windows PowerShell: build the quoted line ourselves.
+    $ahkArgs = '/in "{0}" /out "{1}" /base "{2}" /silent verbose' -f $ahkIn, $exe, $AhkBase
+    $proc = Start-Process -FilePath $Ahk2Exe -ArgumentList $ahkArgs -Wait -PassThru -NoNewWindow
+} finally { Remove-Item $ahkIn -Force -ErrorAction SilentlyContinue }
 if ($proc.ExitCode -ne 0 -or -not (Test-Path $exe)) { throw "Ahk2Exe failed (exit code $($proc.ExitCode))" }
 Invoke-Sign $exe                                  # before it gets packed into the installer
 Write-Host "  app        -> $exe$(if ($SignScript) { ' (signed)' })"

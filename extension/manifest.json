@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Puddock for Twitch",
   "short_name": "Puddock",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Watch Twitch in mpv with your own browser's chat (7TV, BTTV…) side by side. Needs the free Puddock app for Windows.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1stKk8bQlqlPzTOTgjg61ow2yMJ9In2LRjWe4WFOiQttx+4TKSjoMSX2eH7tItNjuySwGcj5/l8P1lMSrkkChDt9vG1lJOYKhAtEVYuK7Xxqw+IMGku4Ul4e/qaJd7SVmReEb9RuZxsXfpCzpVdLiPsi8ye6VhRISkENWyForbImjVB7MmOB739FNelpKsv8KLlucZmuS+4qPhZnxaYVHU1zeOYzeeNHbaxuEmS510xZBQpC1okkxDGEmdTa6WQ+1/8OO2uud6NaIfUwKgrFgjRMLixazWkC1oEF0xX7y7W2MrEdav9mSsb4uOnnFUuKaSy7t0ZumkECbv470B4UBwIDAQAB",
   "permissions": [
