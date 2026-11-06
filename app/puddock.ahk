@@ -600,8 +600,10 @@ class Player {
     ; Embedded mode: mpv is a child window of another process, so keyboard focus doesn't follow
     ; clicks on it by itself. Hand it over on click / when we get activated with the mouse over it.
     FocusVideo() {
-        if this.embedded && this.mpvHwnd && DllCall("IsWindow", "Ptr", this.mpvHwnd)
+        if this.embedded && this.mpvHwnd && DllCall("IsWindow", "Ptr", this.mpvHwnd) {
             try ControlFocus(this.mpvHwnd)
+            this.ChatActivation(false)                ; the chat's input box stops looking focused
+        }
     }
 
     MouseOverVideo() {
@@ -614,8 +616,25 @@ class Player {
     ; The chat is a child window of another process too: a click on it doesn't take the keyboard
     ; away from mpv (both share our window's focus), so hand it over the same way.
     FocusChat() {
-        if this.chatHwnd && DllCall("IsWindow", "Ptr", this.chatHwnd) && !this.ChatHasFocus()
+        if !this.chatHwnd || !DllCall("IsWindow", "Ptr", this.chatHwnd)
+            return
+        if !this.ChatHasFocus()
             try ControlFocus(this.chatHwnd)
+        this.ChatActivation(true)
+    }
+
+    ; The browser decides if its page has focus (caret, highlighted "Send a message" box) from
+    ; WM_ACTIVATE only. As a child window it never gets that message, so it stays "active" after
+    ; the user clicks another window. Tell it ourselves. Posted: a hung browser can't block us.
+    ChatActivation(active) {
+        if this.chatHwnd && DllCall("IsWindow", "Ptr", this.chatHwnd)
+            DllCall("PostMessage", "Ptr", this.chatHwnd, "UInt", 0x6, "Ptr", active ? 1 : 0, "Ptr", 0)  ; WA_ACTIVE / WA_INACTIVE
+    }
+
+    ; Activated with the keyboard (Alt+Tab, taskbar): if the focus came back to the chat, wake it up.
+    ChatFocusBack() {
+        if this.ChatHasFocus()
+            this.ChatActivation(true)
     }
 
     MouseOverChat() {
@@ -633,12 +652,18 @@ class Player {
     }
 
     OnActivate(wParam, lParam, msg, hwnd) {
-        if (hwnd != this.g.Hwnd || !(wParam & 0xFFFF))
+        if (hwnd != this.g.Hwnd)
             return
+        if !(wParam & 0xFFFF) {                       ; another window took over
+            this.ChatActivation(false)
+            return
+        }
         if this.MouseOverVideo()
             SetTimer(ObjBindMethod(this, "FocusVideo"), -30)
         else if this.MouseOverChat()
             SetTimer(ObjBindMethod(this, "FocusChat"), -30)
+        else
+            SetTimer(ObjBindMethod(this, "ChatFocusBack"), -30)
     }
 
     SetVideoMode(mode) {
@@ -834,6 +859,7 @@ class Player {
             this.ToggleChat()
         WinActivate(this.g.Hwnd)
         try ControlFocus(this.chatHwnd)
+        this.ChatActivation(true)
         Sleep(50)
         Send(keys)
     }
