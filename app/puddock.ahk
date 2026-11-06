@@ -620,15 +620,58 @@ class Player {
             return
         if !this.ChatHasFocus()
             try ControlFocus(this.chatHwnd)
-        this.ChatActivation(true)
+        this.ChatActivateAfterClick()
+    }
+
+    ; The browser marks itself inactive on every click into it (WM_MOUSEACTIVATE on a child
+    ; window), after our ~LButton hotkey already ran. Activate it when the click is over.
+    ChatActivateAfterClick() {
+        if !this.HasOwnProp("chatActFn")
+            this.chatActFn := ObjBindMethod(this, "ChatActivateAfterClick")
+        if GetKeyState("LButton", "P") {
+            SetTimer(this.chatActFn, -30)
+            return
+        }
+        SetTimer(this.chatActFn, 0)
+        if WinActive(this.g.Hwnd)                    ; not if the user already went to another window
+            SetTimer(ObjBindMethod(this, "ChatActivation", true), -30)   ; let the browser finish the click
     }
 
     ; The browser decides if its page has focus (caret, highlighted "Send a message" box) from
-    ; WM_ACTIVATE only. As a child window it never gets that message, so it stays "active" after
-    ; the user clicks another window. Tell it ourselves. Posted: a hung browser can't block us.
+    ; WM_ACTIVATE only, and it handles that message only for a top-level window (no WS_CHILD).
+    ; As our child the chat never gets deactivated, so it keeps looking focused after the user
+    ; clicks another window. Tell it ourselves: drop WS_CHILD for the time of one synchronous
+    ; message (with a timeout: a hung browser can't block us), then put it back.
     ChatActivation(active) {
-        if this.chatHwnd && DllCall("IsWindow", "Ptr", this.chatHwnd)
-            DllCall("PostMessage", "Ptr", this.chatHwnd, "UInt", 0x6, "Ptr", active ? 1 : 0, "Ptr", 0)  ; WA_ACTIVE / WA_INACTIVE
+        h := this.chatHwnd
+        if !h || !DllCall("IsWindow", "Ptr", h)
+            return
+        style := DllCall("GetWindowLongPtr", "Ptr", h, "Int", -16, "Ptr")          ; GWL_STYLE
+        if !(style & 0x40000000)                                                    ; not ours any more
+            return
+        ; The browser goes inactive by itself on clicks into it, so WA_ACTIVE is always sent again.
+        if !active && this.HasOwnProp("chatActive") && !this.chatActive             ; already told it
+            return
+        this.chatActive := active
+        DllCall("SetWindowLongPtr", "Ptr", h, "Int", -16, "Ptr", style & ~0x40000000)
+        DllCall("SendMessageTimeout", "Ptr", h, "UInt", 0x6, "Ptr", active ? 1 : 0, "Ptr", 0  ; WM_ACTIVATE
+              , "UInt", 0x2, "UInt", 500, "Ptr*", 0)                                ; SMTO_ABORTIFHUNG
+        DllCall("SetWindowLongPtr", "Ptr", h, "Int", -16, "Ptr", style)
+    }
+
+    ; Our window lost activation. The browser can take it itself when we tell it it's active
+    ; (it then "activates" its own window, which is our child): that is not the user leaving,
+    ; so take the activation back instead of telling the chat it's inactive (else: a loop).
+    OnDeactivated() {
+        fg := DllCall("GetForegroundWindow", "Ptr")
+        if (fg = this.g.Hwnd)
+            return
+        if this.chatHwnd && (fg = this.chatHwnd || DllCall("IsChild", "Ptr", this.chatHwnd, "Ptr", fg)
+                             || DllCall("GetAncestor", "Ptr", fg, "UInt", 2, "Ptr") = this.g.Hwnd) {
+            try WinActivate(this.g.Hwnd)
+            return
+        }
+        this.ChatActivation(false)
     }
 
     ; Activated with the keyboard (Alt+Tab, taskbar): if the focus came back to the chat, wake it up.
@@ -655,7 +698,7 @@ class Player {
         if (hwnd != this.g.Hwnd)
             return
         if !(wParam & 0xFFFF) {                       ; another window took over
-            this.ChatActivation(false)
+            SetTimer(ObjBindMethod(this, "OnDeactivated"), -1)          ; outside this message
             return
         }
         if this.MouseOverVideo()
@@ -681,7 +724,8 @@ class Player {
         MouseGetPos(&mx, &my)
         under := DllCall("WindowFromPoint", "Int64", (my << 32) | (mx & 0xFFFFFFFF), "Ptr")
         ctx := DllCall("GetThreadDpiAwarenessContext", "Ptr")
-        out := "Mode: " (this.embedded ? "Embedded (--wid)" : "Separate window") "`n"
+        out := APP " " VERSION "`n"
+             . "Mode: " (this.embedded ? "Embedded (--wid)" : "Separate window") "`n"
              . "Mouse (screen): " mx ", " my "`n"
              . "Our thread DPI awareness: " DllCall("GetAwarenessFromDpiAwarenessContext", "Ptr", ctx, "Int") "`n`n"
              . "Under mouse: " DescribeWin(under) "`n"
@@ -772,7 +816,7 @@ class Player {
         tray.Add()
         this.FillMainMenu(tray)
         tray.ClickCount := 1
-        A_IconTip := this.ch " · " APP
+        A_IconTip := this.ch " · " APP " " VERSION
         this.UpdateMenus()
     }
 
@@ -789,6 +833,8 @@ class Player {
         m.Add("Launcher…", (*) => Run(SelfCmd("")))
         m.Add("Settings…", (*) => Run(SelfCmd("--settings")))
         m.Add()
+        m.Add(APP " " VERSION, (*) => 0)
+        m.Disable(APP " " VERSION)                   ; shows which build is running
         m.Add("Exit", (*) => ExitApp())
     }
 
@@ -988,7 +1034,7 @@ class Launcher {
         tray.Add()
         tray.Add("Exit", (*) => ExitApp())
         tray.ClickCount := 1
-        A_IconTip := APP
+        A_IconTip := APP " " VERSION
 
         g.Show("w" Launcher.W " h" Launcher.H)
         this.ShowPage(page)
@@ -1006,7 +1052,7 @@ class Launcher {
             RoundCtl(logo.Hwnd, 10)
         }
         g.AddText("x76 y18 w240 h28", APP).SetFont("s15 bold")
-        g.AddText("x76 y46 w500 h18 c" T.muted, "streamlink + mpv + your browser's chat").SetFont("s9")   ; below the account label
+        g.AddText("x76 y46 w500 h18 c" T.muted, "streamlink + mpv + your browser's chat  ·  v" VERSION).SetFont("s9")   ; below the account label
 
         this.acctHdr := g.AddText("x340 y26 w236 h20 Right", "")
         this.acctHdr.SetFont("s9")
