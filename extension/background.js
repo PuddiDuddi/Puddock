@@ -86,6 +86,42 @@ function rateLimited(tabId) {
   return false;
 }
 
+// While a chat is open for Puddock, a native-messaging port stays open for it: the app's way to
+// ask for something inside the chat page (settings, zoom, reload — chat.js does it). The browser
+// keeps one helper process of the app running for as long as the port is open; it ends with the
+// chat tab. Without the port (old app, port refused) the app types the page's shortcuts instead.
+const chatPorts = new Map();                // nonce -> { port, tabId }
+function attachChat(nonce, tabId) {
+  const known = chatPorts.get(nonce);
+  if (known) { known.tabId = tabId; return; }
+  let port;
+  try {
+    port = ext.runtime.connectNative(HOST);
+  } catch {
+    return;
+  }
+  const entry = { port, tabId };
+  chatPorts.set(nonce, entry);
+  port.onMessage.addListener(msg => {
+    if (msg?.type !== 'chat' || typeof msg.action !== 'string') return;
+    ext.tabs.sendMessage(entry.tabId, { type: 'puddock-chat', action: msg.action }).catch(() => {});
+  });
+  port.onDisconnect.addListener(() => {
+    void ext.runtime.lastError;             // read, so the browser doesn't report it as unhandled
+    if (chatPorts.get(nonce) === entry) chatPorts.delete(nonce);
+  });
+  port.postMessage({ cmd: 'attach', nonce });
+}
+
+ext.tabs.onRemoved.addListener(tabId => {   // the event needs no "tabs" permission
+  lastWatch.delete(tabId);
+  for (const [nonce, entry] of chatPorts) {
+    if (entry.tabId !== tabId) continue;
+    chatPorts.delete(nonce);
+    try { entry.port.disconnect(); } catch {}
+  }
+});
+
 // Ask the app to play `channel`. If it wants a chat, open the popout here, in the user's own
 // browser, so their chat extensions (7TV, BTTV…) apply; the nonce lets the app find that window.
 async function watch(channel, tab, pauseTab) {
@@ -143,10 +179,15 @@ ext.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   } else if (msg?.type === 'chat-ready') {
     // A popout carrying a nonce the app issued: make it a popup window (if the app opened it as
     // a tab) and tell chat.js it may mark the window title.
-    nonceIsOurs('Chat', msg.nonce).then(async ok => {
+    // (A chat that still has its port was confirmed before: the app forgets nonces after 10 minutes.)
+    const attached = chatPorts.get(msg.nonce)?.tabId === tab.id;
+    (attached ? Promise.resolve(true) : nonceIsOurs('Chat', msg.nonce)).then(async ok => {
       if (ok) {
-        const w = await ext.windows.get(tab.windowId);
-        if (w.type !== 'popup') await openPopup({ tabId: tab.id });
+        attachChat(msg.nonce, tab.id);
+        try {
+          const w = await ext.windows.get(tab.windowId);
+          if (w.type !== 'popup') await openPopup({ tabId: tab.id });
+        } catch {}
       }
       sendResponse({ ok });
     });

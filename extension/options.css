@@ -1,41 +1,73 @@
+/* Same look as the app's launcher: Consolas on near-black, one accent (the page's one main
+   action), sections divided by a hairline instead of boxed, 4 px spacing grid. */
 :root {
-  --bg: #0e0e10; --panel: #18181b; --input: #1f1f23; --hover: #2c2c33; --line: #2f2f35;
+  color-scheme: dark;
+  --bg: #0e0e10; --input: #1f1f23; --hover: #2c2c33; --line: #2f2f35;
   --text: #f2f2f4; --muted: #cbcbd3; --dim: #a2a2ae; --accent: #9146ff; --accent-hi: #a970ff;
-  --section: #c4a3ff; --ok: #2ee68a; --warn: #ffc24d;
+  --ok: #2ee68a; --warn: #ffc24d;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }   /* a "display" rule below must not bring a hidden element back */
 body {
-  margin: 0 auto; max-width: 640px; padding: 28px 24px 40px;
+  margin: 0; padding: 40px 32px 64px;
   background: var(--bg); color: var(--text);
-  font: 14px/1.5 Consolas, ui-monospace, "Cascadia Mono", monospace;
+  font: 14px/20px Consolas, ui-monospace, "Cascadia Mono", monospace;
 }
-header { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
-header img { border-radius: 10px; }
-h1 { margin: 0; font-size: 22px; }
-h2 { margin: 0 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--section); }
-section { background: var(--panel); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
+main { max-width: 720px; }
+header { display: flex; gap: 16px; align-items: center; margin-bottom: 32px; }
+header img { border-radius: 0; }
+header p { margin: 0; }
+h1 { margin: 0 0 4px; font-size: 20px; line-height: 24px; font-weight: 400; }
+h2 { margin: 0 0 16px; font-size: 14px; line-height: 20px; font-weight: 400; color: var(--dim); }
+h2 span { margin-left: 12px; color: var(--ok); }
+section { padding: 24px 0; border-top: 1px solid var(--line); }
+p { margin: 0 0 12px; max-width: 72ch; }
 .muted { color: var(--muted); }
-.small { font-size: 12px; color: var(--dim); }
-.status { font-weight: bold; }
-.status.ok { color: var(--ok); }
+.small { margin: 20px 0 0; font-size: 12px; line-height: 16px; color: var(--dim); }
+code { color: var(--text); background: var(--input); padding: 0 4px; }
+.error { color: var(--warn); }
+
+/* a state: a small light, then the words */
+.status { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.status::before, .checks li::before {
+  content: ""; flex: none; width: 8px; height: 8px; background: var(--dim);
+}
+.status.ok::before, .checks li.ok::before { background: var(--ok); }
 .status.warn { color: var(--warn); }
-.row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.status.warn::before, .checks li::before { background: var(--warn); }
+.checks { display: flex; gap: 24px; list-style: none; padding: 0; margin: 0; color: var(--muted); }
+.checks li { display: flex; align-items: center; gap: 8px; }
+
+.row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
 button {
-  font: inherit; color: var(--text); background: var(--input); border: 0; border-radius: 6px;
-  padding: 8px 14px; cursor: pointer;
+  font: inherit; color: var(--text); background: var(--input); border: 0; border-radius: 0;
+  height: 36px; padding: 0 16px; cursor: pointer; transition: background-color .15s ease-out;
 }
 button:hover { background: var(--hover); }
-button.accent { background: var(--accent); color: #fff; font-weight: bold; }
+button.accent { background: var(--accent); color: #fff; }
 button.accent:hover { background: var(--accent-hi); }
-.grid { display: grid; grid-template-columns: 1fr auto; gap: 10px 16px; align-items: center; margin-top: 10px; }
-.grid label { color: var(--muted); }
-select, input[type=number] {
-  font: inherit; color: var(--text); background: var(--input); border: 1px solid var(--line);
-  border-radius: 6px; padding: 5px 8px; min-width: 170px;
+button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent-hi); outline-offset: 2px;
 }
-input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); justify-self: end; }
-.checks { list-style: none; padding: 0; margin: 6px 0 0; }
-.checks li::before { content: "○  "; color: var(--warn); }
-.checks li.ok::before { content: "●  "; color: var(--ok); }
-code { color: var(--section); }
-.error { color: var(--warn); }
+
+/* a setting: its name and what it does on the left, the control on the right */
+.grid { display: grid; grid-template-columns: 1fr auto; gap: 16px 24px; align-items: start; }
+.grid label { display: block; padding-top: 6px; }
+.grid label small {
+  display: block; margin-top: 2px; max-width: 60ch;
+  font-size: 12px; line-height: 16px; color: var(--dim);
+}
+select, input[type=number] {
+  font: inherit; color: var(--text); background: var(--input); border: 0; border-radius: 0;
+  height: 32px; padding: 0 12px; min-width: 176px;
+}
+/* the launcher's "[x]" */
+input[type=checkbox] {
+  appearance: none; margin: 0; justify-self: end;
+  font: inherit; line-height: 32px; height: 32px; padding: 0 8px; border-radius: 0;
+  color: var(--dim); cursor: pointer; transition: background-color .15s ease-out;
+}
+input[type=checkbox]::before { content: "[ ]"; }
+input[type=checkbox]:checked { color: var(--text); }
+input[type=checkbox]:checked::before { content: "[x]"; }
+input[type=checkbox]:hover { background: var(--input); }

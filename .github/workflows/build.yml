@@ -72,6 +72,14 @@ jobs:
           if (-not (Test-Path "$innoDir\ISCC.exe")) { throw 'Inno Setup install failed' }
           "ISCC=$innoDir\ISCC.exe" | Out-File $env:GITHUB_ENV -Append
 
+      # Pure-function tests (tests/run.ahk includes app/puddock.ahk without starting the app).
+      # AutoHotkey is a GUI program: piping its output makes PowerShell wait and sets $LASTEXITCODE.
+      - name: Test
+        shell: pwsh
+        run: |
+          & $env:AHK_BASE /ErrorStdOut tests/run.ahk 2>&1 | Out-Host
+          if ($LASTEXITCODE -ne 0) { throw "Tests failed (exit code $LASTEXITCODE)" }
+
       # Code signing happens INSIDE build.ps1 (puddock.exe before it is packed, then the installer
       # and uninstaller via Inno Setup). Enable with the repository variable SIGNING_ENABLED=true
       # once build/sign.ps1 is wired to the chosen service (docs/PUBLISHING.md, section 5).

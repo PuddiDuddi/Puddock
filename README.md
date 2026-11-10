@@ -6,7 +6,7 @@ Puddock plays the stream through [streamlink](https://streamlink.github.io/) + [
 
 > Puddock is an independent project and is not affiliated with or endorsed by Twitch Interactive, Inc. "for Twitch" is used descriptively only.
 
-<!-- TODO: screenshots (player with chat, toolbar, launcher) -->
+![The Puddock launcher: a channel field, favourite and recent channels](docs/images/launcher.png)
 
 ## Features
 
